@@ -10,22 +10,12 @@ export const UserProvider = ({ children }) => {
   const [authLoading, setAuthLoading] = useState(true);
   const toast = useToast();
 
-  const setUser = (user, token) => {
+  const setUser = (user) => {
     setCurrentUser(user);
-    if (token) {
-      localStorage.setItem('token', token);
-    }
   };
 
   const checkAuth = async () => {
     try {
-      // Only check auth if we have a token
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setAuthLoading(false);
-        return null;
-      }
-
       setAuthLoading(true);
       const response = await axios.post('/api/user/auth');
       const { data } = response.data;
@@ -44,8 +34,8 @@ export const UserProvider = ({ children }) => {
     try {
       setAuthLoading(true);
       const response = await axios.post('/api/user/login', { email, password });
-      const { data, token } = response.data;
-      setUser(data, token);
+      const { data } = response.data;
+      setUser(data);
       
       toast({
         position: 'top',
@@ -86,8 +76,8 @@ export const UserProvider = ({ children }) => {
         password,
         avatar,
       });
-      const { data, token } = response.data;
-      setUser(data, token);
+      const { data } = response.data;
+      setUser(data);
       toast({
         position: 'top',
         title: 'Registration successful',
@@ -121,7 +111,6 @@ export const UserProvider = ({ children }) => {
     try {
       await axios.post('/api/user/logout');
       setUser(null);
-      localStorage.removeItem('token');
       
       toast({
         position: 'top',
