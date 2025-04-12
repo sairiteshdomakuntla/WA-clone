@@ -14,6 +14,19 @@ export const UserProvider = ({ children }) => {
     setCurrentUser(user);
   };
 
+  const updateUser = async (updates) => {
+    try {
+      setCurrentUser(prev => ({
+        ...prev,
+        ...updates
+      }));
+      return true;
+    } catch (error) {
+      console.error('Error updating user:', error);
+      return false;
+    }
+  };
+
   const checkAuth = async () => {
     try {
       setAuthLoading(true);
@@ -142,7 +155,7 @@ export const UserProvider = ({ children }) => {
 
   return (
     <UserContext.Provider
-      value={{ currentUser, authLoading, login, register, logout, checkAuth }}
+      value={{ currentUser, authLoading, login, register, logout, checkAuth, updateUser }}
     >
       {children}
     </UserContext.Provider>

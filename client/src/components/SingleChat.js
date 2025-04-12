@@ -53,7 +53,19 @@ function SingleChat() {
   const canType = () => {
     if (!selectedChat) return false;
     if (!selectedChat.isSpecialGroup) return true;
-    return currentUser?.interest === "Playing Cricket";
+    
+    console.log('Current user interest:', currentUser?.interest);
+    console.log('Is special group:', selectedChat.isSpecialGroup);
+    
+    const isPlayer = currentUser?.interest === "Playing Cricket";
+    console.log('Is player:', isPlayer);
+    
+    if (selectedChat.isSpecialGroup && !isPlayer) {
+      console.log('User cannot type in special group - not a player');
+      return false;
+    }
+    
+    return true;
   };
 
   const fetchMessages = async () => {
@@ -92,7 +104,10 @@ function SingleChat() {
   };
 
   const sendMessage = async (event) => {
-    if (event.key === "Enter" && newMessage && canType()) {
+    const canUserType = canType();
+    console.log('Can user type before sending:', canUserType);
+    
+    if (event.key === "Enter" && newMessage && canUserType) {
       socket.emit("stop typing", selectedChat._id);
       try {
         const config = {
@@ -137,7 +152,10 @@ function SingleChat() {
   };
 
   const typingHandler = (e) => {
-    if (!canType()) return;
+    const canUserType = canType();
+    console.log('Can user type:', canUserType);
+    
+    if (!canUserType) return;
     
     setNewMessage(e.target.value);
 
@@ -276,6 +294,14 @@ function SingleChat() {
     };
   }, [selectedChat, socketConnected]);
 
+  const isTypingAllowed = () => {
+    if (!selectedChat?.isSpecialGroup) {
+      return true;
+    }
+    
+    return currentUser?.interest === "Playing Cricket";
+  };
+
   return (
     <Flex flexDirection='column' w='100%'>
       {selectedChat ? (
@@ -340,19 +366,29 @@ function SingleChat() {
                 <ScrollableChat messages={messages} />
               </Flex>
             )}
-            <FormControl onKeyDown={sendMessage} isRequired mt={3} isDisabled={!canType()}>
+            <FormControl
+              onKeyDown={sendMessage}
+              id="first-name"
+              isRequired
+              mt={3}
+              isDisabled={!isTypingAllowed()}
+            >
+              {!isTypingAllowed() && selectedChat?.isSpecialGroup && (
+                <Text color="red.500" mb={2}>
+                  Only players can send messages in the Cricket Community group
+                </Text>
+              )}
               <Input
                 variant="filled"
                 bg="#E0E0E0"
                 placeholder={
-                  selectedChat?.isSpecialGroup
-                    ? currentUser?.interest === "Playing Cricket"
-                      ? "Type your message..."
-                      : "Only players can send messages in this group"
-                    : "Type your message..."
+                  !isTypingAllowed() && selectedChat?.isSpecialGroup
+                    ? "Only players can send messages in this group"
+                    : "Enter a message.."
                 }
                 value={newMessage}
                 onChange={typingHandler}
+                disabled={!isTypingAllowed()}
               />
             </FormControl>
           </Flex>

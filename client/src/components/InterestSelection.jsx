@@ -67,7 +67,7 @@ const InterestSelection = () => {
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(true);
   const history = useHistory();
-  const { currentUser, authLoading, checkAuth } = useUserContext();
+  const { currentUser, authLoading, checkAuth, updateUser } = useUserContext();
   const { setChats, fetchUserChats } = useChatContext();
   const toast = useToast();
 
@@ -109,7 +109,8 @@ const InterestSelection = () => {
     setSelectedInterest(interest);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     if (!mounted) return;
     
     if (!selectedInterest) {
@@ -148,11 +149,14 @@ const InterestSelection = () => {
           // Fetch all chats to ensure the group appears
           await fetchUserChats();
           
+          await updateUser({ interest: selectedInterest });
+          
           toast({
             title: "Interest set successfully",
             status: "success",
-            duration: 3000,
+            duration: 5000,
             isClosable: true,
+            position: "bottom",
           });
           
           history.push('/');
