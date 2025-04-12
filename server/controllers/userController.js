@@ -94,3 +94,27 @@ exports.sendUsers = catchAsyncError(async (req, res, next) => {
     data: users,
   });
 });
+
+// set user interest
+exports.setUserInterest = catchAsyncError(async (req, res, next) => {
+  const { interest } = req.body;
+  
+  if (!interest || !['Playing Cricket', 'Watching Cricket'].includes(interest)) {
+    return next(new ErrorHandler('Invalid interest value', 400));
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    { interest },
+    { new: true }
+  );
+
+  if (!user) {
+    return next(new ErrorHandler('User not found', 404));
+  }
+
+  res.status(200).json({
+    success: true,
+    data: user,
+  });
+});

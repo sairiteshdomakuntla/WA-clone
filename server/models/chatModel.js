@@ -10,6 +10,10 @@ const chatModel = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isSpecialGroup: {
+      type: Boolean,
+      default: false,
+    },
     latestMessage: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Message',

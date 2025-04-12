@@ -25,6 +25,7 @@ import {
   Avatar,
   HStack,
   Input,
+  Tooltip,
 } from '@chakra-ui/react';
 
 let socket;
@@ -49,117 +50,231 @@ function SingleChat() {
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
+  const canType = () => {
+    if (!selectedChat) return false;
+    if (!selectedChat.isSpecialGroup) return true;
+    return currentUser?.interest === "Playing Cricket";
+  };
+
   const fetchMessages = async () => {
-    if (!selectedChat) {
-      return;
-    }
+    if (!selectedChat) return;
+    
     try {
       setLoading(true);
       const response = await axios.get(`/api/message/${selectedChat._id}`);
-      const { data } = response.data;
-      setMessages(data);
+      console.log('Fetched messages response:', response.data);
+      
+      if (!response.data || !response.data.data) {
+        throw new Error('Invalid response format');
+      }
+      
+      const messages = response.data.data;
+      if (!Array.isArray(messages)) {
+        throw new Error('Messages is not an array');
+      }
+      
+      setMessages(messages);
       setLoading(false);
-      socket.emit('join_room', {
-        room: selectedChat._id,
-        users: selectedChat.users,
-      });
+      socket.emit('join_room', selectedChat._id);
     } catch (error) {
-      const { message } = error.response.data;
-      setLoading(false);
-      return toast({
-        position: 'top',
-        title: 'Error occured',
-        description: message,
-        status: 'error',
+      console.error('Error fetching messages:', error);
+      toast({
+        title: "Error Occurred!",
+        description: error.message || "Failed to fetch messages",
+        status: "error",
         duration: 5000,
         isClosable: true,
+        position: "bottom",
       });
+      setMessages([]);
+      setLoading(false);
     }
   };
 
-  const sendMessage = async (e) => {
-    if (e.key === 'Enter' && newMessage) {
+  const sendMessage = async (event) => {
+    if (event.key === "Enter" && newMessage && canType()) {
+      socket.emit("stop typing", selectedChat._id);
       try {
-        const body = {
-          chatId: selectedChat._id,
-          content: newMessage,
+        const config = {
+          headers: {
+            "Content-type": "application/json",
+          },
         };
-        setNewMessage('');
-        const response = await axios.post('/api/message', body);
-        const { data } = response.data;
-        socket.emit('new_message', data);
-        socket.emit('stop_typing', selectedChat._id);
-        setMessages((prev) => {
-          return [...prev, data];
+        setNewMessage("");
+        const response = await axios.post(
+          "/api/message",
+          {
+            content: newMessage,
+            chatId: selectedChat._id
+          },
+          config
+        );
+        
+        console.log('Send message response:', response.data);
+        
+        if (!response.data || !response.data.data) {
+          throw new Error('Invalid response format');
+        }
+        
+        const message = response.data.data;
+        socket.emit("new message", message);
+        setMessages(prev => {
+          if (!prev) return [message];
+          return [...prev, message];
         });
       } catch (error) {
-        const { message } = error.response.data;
-        return toast({
-          position: 'top',
-          title: 'Error occured',
-          description: message,
-          status: 'error',
+        console.error('Error sending message:', error);
+        toast({
+          title: "Error Occurred!",
+          description: error.message || "Failed to send the Message",
+          status: "error",
           duration: 5000,
           isClosable: true,
+          position: "bottom",
         });
       }
     }
   };
 
-  const handleTyping = (e) => {
+  const typingHandler = (e) => {
+    if (!canType()) return;
+    
     setNewMessage(e.target.value);
-    if (!socketConnected) {
-      return;
+
+    if (!socketConnected) return;
+
+    if (!typing) {
+      setTyping(true);
+      socket.emit("typing", selectedChat._id);
     }
-    setTyping(true);
-    socket.emit('typing', selectedChat._id);
-    if (timeout) {
-      clearTimeout(timeout);
-    }
-    timeout = setTimeout(() => {
-      setTyping(false);
-      socket.emit('stop_typing', selectedChat._id);
-    }, 3000);
+    let lastTypingTime = new Date().getTime();
+    var timerLength = 3000;
+    setTimeout(() => {
+      var timeNow = new Date().getTime();
+      var timeDiff = timeNow - lastTypingTime;
+      if (timeDiff >= timerLength && typing) {
+        socket.emit("stop typing", selectedChat._id);
+        setTyping(false);
+      }
+    }, timerLength);
   };
 
   useEffect(() => {
-    socket = io(
-      process.env.NODE_ENV !== 'production'
-        ? 'http://localhost:5000'
-        : process.env.REACT_APP_PROJECT_URL
-    );
-    socket.emit('setup', currentUser);
-    socket.on('connected', () => setSocketConnected(true));
-    socket.on('user_online_status', (online) => setOnlineStatus(online));
+    if (!currentUser) return;
+
+    // Create socket instance
+    socket = io(process.env.NODE_ENV !== 'production' ? 'http://localhost:5000' : process.env.REACT_APP_PROJECT_URL, {
+      withCredentials: true,
+      transports: ['polling', 'websocket'], // Try polling first, then upgrade to websocket
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 20000,
+    });
+
+    // Connection events
+    socket.on('connect', () => {
+      console.log('Socket connected with ID:', socket.id);
+      setSocketConnected(true);
+      socket.emit('setup', currentUser);
+    });
+
+    socket.on('connected', () => {
+      console.log('Socket setup completed');
+    });
+
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error);
+      setSocketConnected(false);
+      toast({
+        title: "Connection Error",
+        description: "Trying to reconnect to chat server...",
+        status: "warning",
+        duration: 3000,
+        isClosable: true,
+        position: "bottom",
+      });
+    });
+
+    socket.on('disconnect', (reason) => {
+      console.log('Socket disconnected:', reason);
+      setSocketConnected(false);
+    });
+
+    socket.on('reconnect', (attemptNumber) => {
+      console.log('Socket reconnected after', attemptNumber, 'attempts');
+      setSocketConnected(true);
+      if (selectedChat) {
+        socket.emit('join_room', selectedChat._id);
+      }
+    });
+
+    // Chat events
     socket.on('typing', () => setIsTyping(true));
     socket.on('stop_typing', () => setIsTyping(false));
+    
     socket.on('new_message_recieved', (message) => {
+      console.log('New message received:', message);
+      
+      if (!message || !message.chat || !message.sender) {
+        console.error('Invalid message format:', message);
+        return;
+      }
+
       if (!selectedChatBackup || selectedChatBackup._id !== message.chat._id) {
-        if (!notification.includes(message)) {
-          setNotification((prev) => {
+        if (!notification?.includes(message)) {
+          setNotification(prev => {
+            if (!prev) return [message];
             return [message, ...prev];
           });
-          setFetchFlag((prev) => {
-            return !prev;
-          });
+          setFetchFlag(prev => !prev);
         }
       } else {
-        setMessages((prev) => {
-          return [...prev, message];
+        setMessages(prev => {
+          if (!prev) return [message];
+          const newMessages = [...prev];
+          if (!newMessages.some(m => m._id === message._id)) {
+            newMessages.push(message);
+          }
+          return newMessages;
         });
       }
     });
-  }, []);
+
+    // Cleanup
+    return () => {
+      console.log('Cleaning up socket connection');
+      if (socket) {
+        if (selectedChat) {
+          socket.emit('leave_room', selectedChat._id);
+        }
+        socket.off('connect');
+        socket.off('connected');
+        socket.off('connect_error');
+        socket.off('disconnect');
+        socket.off('reconnect');
+        socket.off('typing');
+        socket.off('stop_typing');
+        socket.off('new_message_recieved');
+        socket.disconnect();
+      }
+    };
+  }, [currentUser]);
 
   useEffect(() => {
-    if (selectedChatBackup) {
-      socket.emit('leave_room', selectedChatBackup._id);
+    if (selectedChat && socketConnected) {
+      console.log('Joining chat room:', selectedChat._id);
+      socket.emit('join_room', selectedChat._id);
+      fetchMessages();
+      selectedChatBackup = selectedChat;
     }
-    fetchMessages();
-    selectedChatBackup = selectedChat;
-    setTyping(false);
-    setIsTyping(false);
-  }, [selectedChat]);
+    return () => {
+      if (selectedChat && socket) {
+        console.log('Leaving chat room:', selectedChat._id);
+        socket.emit('leave_room', selectedChat._id);
+      }
+    };
+  }, [selectedChat, socketConnected]);
 
   return (
     <Flex flexDirection='column' w='100%'>
@@ -183,49 +298,39 @@ function SingleChat() {
                   <Avatar
                     size='md'
                     name={getSender(currentUser, selectedChat.users)}
-                    src={
-                      getSendersFullDetails(currentUser, selectedChat.users)
-                        .avatar.url
-                    }
+                    src={getSendersFullDetails(currentUser, selectedChat.users).avatar.url}
                   />
                   <VStack spacing='0' alignItems='flex-start'>
                     <Text>{getSender(currentUser, selectedChat.users)}</Text>
-                    <Text fontSize='sm' color='gray.400'>
-                      {onlineStatus
-                        ? isTyping
-                          ? 'typing...'
-                          : 'online'
-                        : 'offline'}
-                    </Text>
+                    {isTyping ? (
+                      <Text fontSize='sm' color='gray.500'>typing...</Text>
+                    ) : null}
                   </VStack>
                 </HStack>
-                <ProfileModal
-                  user={getSendersFullDetails(currentUser, selectedChat.users)}
-                />
+                <ProfileModal user={getSendersFullDetails(currentUser, selectedChat.users)} />
               </>
             ) : (
               <>
                 <HStack spacing='4'>
                   <Avatar size='md' name={selectedChat.chatName} />
                   <VStack spacing='0' alignItems='flex-start'>
-                    <Text>{selectedChat.chatName.toUpperCase()}</Text>
+                    <Text>{selectedChat.chatName}</Text>
                     {isTyping && (
-                      <Text fontSize='sm' color='gray.400'>
-                        typing...
-                      </Text>
+                      <Text fontSize='sm' color='gray.500'>typing...</Text>
                     )}
                   </VStack>
                 </HStack>
-                <UpdateGroupChatModal fetchMessages={fetchMessages} />
+                {!selectedChat.isSpecialGroup && <UpdateGroupChatModal fetchMessages={fetchMessages} />}
               </>
             )}
           </Flex>
           <Flex
-            w='100%'
-            h='100%'
             flexDirection='column'
             justifyContent='flex-end'
-            backgroundImage={bcg}
+            p='3'
+            bg={`url(${bcg})`}
+            w='100%'
+            h='100%'
             overflowY='hidden'
           >
             {loading ? (
@@ -235,47 +340,35 @@ function SingleChat() {
                 <ScrollableChat messages={messages} />
               </Flex>
             )}
-            <Box py='2' px='4' bg='gray.100'>
-              <FormControl onKeyDown={sendMessage} isRequired>
-                <Input
-                  bg='white'
-                  focusBorderColor='none'
-                  borderRadius='full'
-                  placeholder='Write your message'
-                  value={newMessage}
-                  onChange={handleTyping}
-                />
-              </FormControl>
-            </Box>
+            <FormControl onKeyDown={sendMessage} isRequired mt={3} isDisabled={!canType()}>
+              <Input
+                variant="filled"
+                bg="#E0E0E0"
+                placeholder={
+                  selectedChat?.isSpecialGroup
+                    ? currentUser?.interest === "Playing Cricket"
+                      ? "Type your message..."
+                      : "Only players can send messages in this group"
+                    : "Type your message..."
+                }
+                value={newMessage}
+                onChange={typingHandler}
+              />
+            </FormControl>
           </Flex>
         </>
       ) : (
         <Flex
-          w='100%'
-          h='100%'
-          bg='gray.50'
-          flexDirection='column'
-          justifyContent='space-between'
           alignItems='center'
-          overflowY='hidden'
+          justifyContent='center'
+          h='100%'
+          flexDirection='column'
+          bg='gray.100'
         >
-          <VStack
-            w='50%'
-            m='auto'
-            spacing='4'
-            justifyContent='center'
-            alignItems='center'
-          >
-            <Image src={bcg2} width='300px' />
-            <Text textAlign='center' fontSize='3xl' fontWeight='300'>
-              No need to keep phone connected
-            </Text>
-            <Text textAlign='center' fontWeight='300' color='gray.400'>
-              TomperChat is centralized and doesn't need phone to be connected.
-              Also its not End-To-End Encrypted, so chat wisely.
-            </Text>
-          </VStack>
-          <Box w='100%' h='10px' alignSelf='flex-end' bg='whatsapp.400'></Box>
+          <Image src={bcg2} boxSize='300px' />
+          <Text fontSize='3xl' pb='3'>
+            Select a chat to start messaging
+          </Text>
         </Flex>
       )}
     </Flex>

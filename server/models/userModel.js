@@ -33,6 +33,11 @@ const userModel = mongoose.Schema(
         type: String,
       },
     },
+    interest: {
+      type: String,
+      enum: ['Playing Cricket', 'Watching Cricket'],
+      required: false
+    }
   },
   { timestamps: true }
 );

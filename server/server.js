@@ -34,8 +34,19 @@ process.on('uncaughtException', (err) => {
 // connect to db
 connectToDb();
 
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
 // using middlewares
-app.use(cors({ origin: process.env.FRONTEND_URL, credentials: true }));
+app.use(cors({ 
+  origin: ['http://localhost:3000', process.env.FRONTEND_URL],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+}));
 // console.log(process.env.FRONTEND_URL);
 app.use(express.json({ limit: '20mb' }));
 app.use(cookieParser());
@@ -64,23 +75,40 @@ if (process.env.NODE_ENV === 'production') {
 // starting server
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
-  console.log('server running 🚀');
+  console.log(`Server running on port ${PORT} 🚀`);
 });
 
 // starting the socket
 const io = require('socket.io')(server, {
   pingTimeout: 60000,
   cors: {
-    origin: process.env.FRONTEND_URL,
+    origin: ['http://localhost:3000', process.env.FRONTEND_URL],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
   },
+});
+
+// Add error handling for socket.io
+io.on('connect_error', (err) => {
+  console.log(`Socket connection error: ${err.message}`);
+});
+
+io.on('error', (err) => {
+  console.log(`Socket error: ${err.message}`);
 });
 
 // listening events
 io.on('connection', (socket) => {
+  console.log('New socket connection:', socket.id);
   socketEventHandler.handleSetup(socket);
   socketEventHandler.handleJoinChat(socket);
   socketEventHandler.handleMessage(socket);
   socketEventHandler.handleTyping(socket);
+  
+  socket.on('disconnect', () => {
+    console.log('Client disconnected:', socket.id);
+  });
 });
 
 // unhandled promise rejection

@@ -18,4 +18,7 @@ router.route('/login').post(userController.loginUser);
 // logout user
 router.route('/logout').post(userController.logoutUser);
 
+// set user interest
+router.route('/set-interest').put(auth.checkUserAuthentication, userController.setUserInterest);
+
 module.exports = router;

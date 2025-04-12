@@ -44,16 +44,42 @@ exports.sendSingleChat = CatchAsyncErrors(async (req, res, next) => {
 });
 
 exports.sendAllChats = CatchAsyncErrors(async (req, res, next) => {
+  console.log('Fetching all chats for user:', req.user._id);
+  
+  // Get the Cricket Community group first
+  const cricketGroup = await Chat.findOne({ 
+    chatName: "Cricket Community",
+    isSpecialGroup: true 
+  })
+    .populate('users')
+    .populate('groupAdmin')
+    .populate('latestMessage');
+
+  // If Cricket Community exists and user is not in it, add them
+  if (cricketGroup && !cricketGroup.users.includes(req.user._id)) {
+    cricketGroup.users.push(req.user._id);
+    await cricketGroup.save();
+  }
+
+  // Get all regular chats
   let chats = await Chat.find({
     users: { $elemMatch: { $eq: req.user._id } },
+    isSpecialGroup: { $ne: true } // Exclude special group from regular query
   })
     .populate('users')
     .populate('groupAdmin')
     .populate('latestMessage')
     .sort({ updatedAt: -1 });
+
+  // Add Cricket Community to the beginning if it exists
+  if (cricketGroup) {
+    chats = [cricketGroup, ...chats];
+  }
+
   chats = await User.populate(chats, {
     path: 'latestMessage.sender',
   });
+
   res.status(200).json({
     success: true,
     data: chats,
@@ -61,23 +87,81 @@ exports.sendAllChats = CatchAsyncErrors(async (req, res, next) => {
 });
 
 exports.createGroupChat = CatchAsyncErrors(async (req, res, next) => {
-  const { users, name } = req.body;
-  if (!users || !name) {
+  const { users, name, isSpecialGroup } = req.body;
+  console.log('Creating group chat:', { users, name, isSpecialGroup });
+  
+  if (!name) {
     return next(new ErrorHandler('Missing fields', 400));
   }
-  if (users.length < 2) {
+
+  // For special cricket group
+  if (isSpecialGroup) {
+    console.log('Handling Cricket Community group');
+    
+    // Check if cricket group already exists
+    const existingCricketGroup = await Chat.findOne({ 
+      chatName: "Cricket Community",
+      isSpecialGroup: true 
+    });
+    
+    if (existingCricketGroup) {
+      console.log('Found existing Cricket Community group');
+      
+      // Check if user is already in the group
+      if (!existingCricketGroup.users.includes(req.user._id)) {
+        console.log('Adding current user to Cricket Community');
+        existingCricketGroup.users.push(req.user._id);
+        await existingCricketGroup.save();
+      }
+
+      const fullGroupChat = await Chat.findOne({ _id: existingCricketGroup._id })
+        .populate('users')
+        .populate('groupAdmin');
+
+      return res.status(200).json({
+        success: true,
+        data: fullGroupChat,
+      });
+    }
+
+    console.log('Creating new Cricket Community group');
+    // Create new cricket group only if it doesn't exist
+    const allUsers = await User.find({});
+    const groupChat = await Chat.create({
+      chatName: "Cricket Community", // Use fixed name
+      isGroupChat: true,
+      isSpecialGroup: true,
+      users: allUsers.map(user => user._id),
+      groupAdmin: req.user,
+    });
+
+    const fullGroupChat = await Chat.findOne({ _id: groupChat._id })
+      .populate('users')
+      .populate('groupAdmin');
+
+    return res.status(200).json({
+      success: true,
+      data: fullGroupChat,
+    });
+  }
+
+  // For regular groups
+  if (!users || users.length < 2) {
     return next(new ErrorHandler('There must be more than 2 users', 400));
   }
-  users.push(req.user);
+
+  users.push(req.user._id);
   const groupChat = await Chat.create({
     chatName: name,
     isGroupChat: true,
     users,
     groupAdmin: req.user,
   });
+
   const fullGroupChat = await Chat.findOne({ _id: groupChat._id })
     .populate('users')
     .populate('groupAdmin');
+
   res.status(200).json({
     success: true,
     data: fullGroupChat,

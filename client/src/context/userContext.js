@@ -1,9 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useToast } from '@chakra-ui/react';
 import { getLocalStorage, setLocalStorage } from '../utils/helpers';
-import axios from 'axios';
-
-axios.defaults.withCredentials = true;
+import axios from '../utils/axiosConfig';
 
 const UserContext = React.createContext();
 
@@ -12,29 +10,44 @@ export const UserProvider = ({ children }) => {
   const [authLoading, setAuthLoading] = useState(true);
   const toast = useToast();
 
-  const setUser = (user) => {
+  const setUser = (user, token) => {
     setCurrentUser(user);
+    if (token) {
+      localStorage.setItem('token', token);
+    }
   };
 
   const checkAuth = async () => {
     try {
+      // Only check auth if we have a token
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setAuthLoading(false);
+        return null;
+      }
+
       setAuthLoading(true);
       const response = await axios.post('/api/user/auth');
       const { data } = response.data;
       setUser(data);
       setAuthLoading(false);
+      return data;
     } catch (error) {
-      console.log(error.response);
+      // Don't log the error for auth check
       setAuthLoading(false);
+      setUser(null);
+      return null;
     }
   };
 
-  const login = async (email, password) => {
+  const login = async (email, password, navigate) => {
     try {
+      setAuthLoading(true);
       const response = await axios.post('/api/user/login', { email, password });
-      const { data } = response.data;
-      setUser(data);
-      return toast({
+      const { data, token } = response.data;
+      setUser(data, token);
+      
+      toast({
         position: 'top',
         title: 'Logged In',
         description: `Logged in as ${data.name}`,
@@ -42,84 +55,105 @@ export const UserProvider = ({ children }) => {
         duration: 5000,
         isClosable: true,
       });
+      
+      // Always redirect to interest selection after login
+      navigate('/select-interest');
+      
+      return data;
     } catch (error) {
-      const { message } = error.response.data;
-      return toast({
+      console.error('Login error:', error);
+      const errorMessage = error.response?.data?.message || 'An error occurred during login';
+      toast({
         position: 'top',
-        title: 'Error occured',
-        description: message,
+        title: 'Error occurred',
+        description: errorMessage,
         status: 'error',
         duration: 5000,
         isClosable: true,
       });
+      return null;
+    } finally {
+      setAuthLoading(false);
     }
   };
 
-  const register = async (name, email, password, avatar) => {
+  const register = async (name, email, password, avatar, navigate) => {
     try {
+      setAuthLoading(true);
       const response = await axios.post('/api/user/register', {
         name,
         email,
         password,
         avatar,
       });
-      const { data } = response.data;
-      setUser(data);
-      return toast({
+      const { data, token } = response.data;
+      setUser(data, token);
+      toast({
         position: 'top',
-        title: 'Registration successfull',
+        title: 'Registration successful',
         description: `Logged in as ${data.name}`,
         status: 'success',
         duration: 5000,
         isClosable: true,
       });
+      
+      navigate('/select-interest');
+      
+      return data;
     } catch (error) {
-      const { message } = error.response.data;
-      return toast({
+      console.error('Registration error:', error);
+      const errorMessage = error.response?.data?.message || 'An error occurred during registration';
+      toast({
         position: 'top',
-        title: 'Error occured',
-        description: message,
+        title: 'Error occurred',
+        description: errorMessage,
         status: 'error',
         duration: 5000,
         isClosable: true,
       });
+      return null;
+    } finally {
+      setAuthLoading(false);
     }
   };
 
   const logout = async () => {
     try {
-      const response = await axios.post('/api/user/logout');
-      const { message } = response.data;
+      await axios.post('/api/user/logout');
       setUser(null);
-      return toast({
+      localStorage.removeItem('token');
+      
+      toast({
         position: 'top',
         title: 'Success',
-        description: message,
+        description: 'Logged out successfully',
         status: 'success',
         duration: 5000,
         isClosable: true,
       });
+      return true;
     } catch (error) {
-      const { message } = error.response.data;
-      return toast({
+      console.error('Logout error:', error);
+      const errorMessage = error.response?.data?.message || 'An error occurred during logout';
+      toast({
         position: 'top',
-        title: 'Error occured',
-        description: message,
+        title: 'Error occurred',
+        description: errorMessage,
         status: 'error',
         duration: 5000,
         isClosable: true,
       });
+      return false;
     }
   };
 
   useEffect(() => {
     checkAuth();
-    // eslint-disable-next-line
   }, []);
 
   return (
     <UserContext.Provider
-      value={{ currentUser, authLoading, login, register, logout }}
+      value={{ currentUser, authLoading, login, register, logout, checkAuth }}
     >
       {children}
     </UserContext.Provider>

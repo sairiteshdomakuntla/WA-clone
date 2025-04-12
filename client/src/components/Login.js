@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { useUserContext } from '../context/userContext';
 import useMounted from '../hooks/useMounted';
 import {
@@ -19,6 +20,7 @@ const initialCredential = {
 
 function Login() {
   const { login } = useUserContext();
+  const history = useHistory();
 
   const [credentials, setCredentials] = useState(initialCredential);
   const [loading, setLoading] = useState(false);
@@ -32,7 +34,8 @@ function Login() {
     });
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     const { email, password } = credentials;
     if (!email || !password) {
       return toast({
@@ -45,7 +48,7 @@ function Login() {
       });
     }
     setLoading(true);
-    await login(email, password);
+    const user = await login(email, password, history.push.bind(history));
     if (mounted.current) {
       setLoading(false);
     }

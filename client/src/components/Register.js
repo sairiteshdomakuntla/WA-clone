@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useHistory } from 'react-router-dom';
 import { useUserContext } from '../context/userContext';
 import useMounted from '../hooks/useMounted';
 import {
@@ -22,6 +23,7 @@ const initialCredential = {
 
 function Register() {
   const { register } = useUserContext();
+  const history = useHistory();
 
   const [credentials, setCredentials] = useState(initialCredential);
   const [loading, setLoading] = useState(false);
@@ -81,9 +83,14 @@ function Register() {
       });
     }
     setLoading(true);
-    await register(name, email, password, avatar);
+    const user = await register(name, email, password, avatar);
     if (mounted.current) {
       setLoading(false);
+    }
+    
+    // Redirect to interest selection after successful registration
+    if (user) {
+      history.push('/select-interest');
     }
   };
 
