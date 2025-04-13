@@ -24,7 +24,7 @@ axios.interceptors.response.use(
     // Handle common error cases here
     if (error.response?.status === 401) {
       // Handle unauthorized access
-      console.log('Unauthorized access');
+      // console.log('Unauthorized access');
     }
     return Promise.reject(error);
   }

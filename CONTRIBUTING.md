@@ -11,13 +11,13 @@ Here are the steps you can follow to start contributing:
 **Step 3:** Clone forked version on your local machine:
 
 ```git
-git clone https://github.com/<your_github_username>/tomper-chat.git
+git clone https://github.com/<your_github_username>/whatsapp-clone.git
 ```
 
 **Step 4:** Go inside cloned folder and add the original repository as `upstream`:
 
 ```git
-git remote add upstream https://github.com/varunKT001/tomper-chat.git
+git remote add upstream https://github.com/varunKT001/whatsapp-clone.git
 ```
 
 **Step 5:** Setup the project on your local machine (read the [setup guide](./README.md#-installation-and-setup))

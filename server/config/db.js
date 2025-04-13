@@ -7,10 +7,11 @@ const connectToDb = () => {
       useUnifiedTopology: true,
     })
     .then((data) =>
-      console.log(`Database connected with ${data.connection.host}`)
+      // console.log(`Database connected with ${data.connection.host}`)
+    console.log("Database connected")
     )
     .catch((err) => {
-      console.log(`Error: ${err.message}`);
+      console.log(`Error connecting DB: ${err.message}`);
     });
 };
 

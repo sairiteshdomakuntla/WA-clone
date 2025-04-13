@@ -5,7 +5,7 @@
 <b>WhatsApp clone build using MERN stack</b>
 </p>
 <p align='center'>
-<a href='https://tomper-chat.onrender.com/' target='_blank'>tomper-chat.onrender.com</a> (cloud-based)
+<a href='https://whatsapp-clone.onrender.com/' target='_blank'>whatsapp-clone.onrender.com</a> (cloud-based)
 <br/>
 <a href='https://tc.varuntiwari.com' target='_blank'>tc.varuntiwari.com</a> (self-hosted)
 </p>

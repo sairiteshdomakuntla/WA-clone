@@ -44,8 +44,6 @@ exports.sendSingleChat = CatchAsyncErrors(async (req, res, next) => {
 });
 
 exports.sendAllChats = CatchAsyncErrors(async (req, res, next) => {
-  console.log('Fetching all chats for user:', req.user._id);
-  
   // Get the Cricket Community group first
   const cricketGroup = await Chat.findOne({ 
     chatName: "Cricket Community",
@@ -88,7 +86,6 @@ exports.sendAllChats = CatchAsyncErrors(async (req, res, next) => {
 
 exports.createGroupChat = CatchAsyncErrors(async (req, res, next) => {
   const { users, name, isSpecialGroup } = req.body;
-  console.log('Creating group chat:', { users, name, isSpecialGroup });
   
   if (!name) {
     return next(new ErrorHandler('Missing fields', 400));
@@ -96,7 +93,6 @@ exports.createGroupChat = CatchAsyncErrors(async (req, res, next) => {
 
   // For special cricket group
   if (isSpecialGroup) {
-    console.log('Handling Cricket Community group');
     
     // Check if cricket group already exists
     const existingCricketGroup = await Chat.findOne({ 
@@ -105,11 +101,9 @@ exports.createGroupChat = CatchAsyncErrors(async (req, res, next) => {
     });
     
     if (existingCricketGroup) {
-      console.log('Found existing Cricket Community group');
       
       // Check if user is already in the group
       if (!existingCricketGroup.users.includes(req.user._id)) {
-        console.log('Adding current user to Cricket Community');
         existingCricketGroup.users.push(req.user._id);
         await existingCricketGroup.save();
       }
@@ -124,7 +118,6 @@ exports.createGroupChat = CatchAsyncErrors(async (req, res, next) => {
       });
     }
 
-    console.log('Creating new Cricket Community group');
     // Create new cricket group only if it doesn't exist
     const allUsers = await User.find({});
     const groupChat = await Chat.create({
@@ -171,7 +164,6 @@ exports.createGroupChat = CatchAsyncErrors(async (req, res, next) => {
 exports.renameGroup = CatchAsyncErrors(async (req, res, next) => {
   const { chatId, chatName } = req.body;
   const group = await Chat.findById(chatId);
-  console.log(group.groupAdmin);
   if (group.groupAdmin._id.toString() !== req.user._id.toString()) {
     return next(
       new ErrorHandler(

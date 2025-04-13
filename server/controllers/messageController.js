@@ -53,39 +53,39 @@ exports.sendSingleMessage = CatchAsyncErrors(async (req, res, next) => {
 
 exports.sendAllMessage = CatchAsyncErrors(async (req, res, next) => {
   try {
-    console.log('Fetching messages for chat ID:', req.params.id);
+    // console.log('Fetching messages for chat ID:', req.params.id);
     
     if (!req.params.id) {
-      console.log('Chat ID is missing');
+      // console.log('Chat ID is missing');
       return next(new ErrorHandler('Chat ID is required', 400));
     }
 
     const chat = await Chat.findById(req.params.id).populate('users');
-    console.log('Found chat:', chat);
+    // console.log('Found chat:', chat);
     
     if (!chat) {
-      console.log('Chat not found for ID:', req.params.id);
+      // console.log('Chat not found for ID:', req.params.id);
       return next(new ErrorHandler('Chat not found', 404));
     }
 
     if (!chat.users || !Array.isArray(chat.users)) {
-      console.log('Chat users array is invalid:', chat.users);
+      // console.log('Chat users array is invalid:', chat.users);
       return next(new ErrorHandler('Invalid chat data', 500));
     }
     
     const chatUsers = chat.users.map(user => user._id ? user._id.toString() : user.toString());
-    console.log('Chat users:', chatUsers);
-    console.log('Current user:', req.user._id.toString());
+    // console.log('Chat users:', chatUsers);
+    // console.log('Current user:', req.user._id.toString());
     
     if (!chatUsers.includes(req.user._id.toString())) {
-      console.log('User not authorized for this chat');
+      // console.log('User not authorized for this chat');
       return next(
         new ErrorHandler('Cannot get messages of chats you are not part of', 401)
       );
     }
     
     let messages = await Message.find({ chat: req.params.id });
-    console.log('Raw messages found:', messages.length);
+    // console.log('Raw messages found:', messages.length);
 
     // Populate messages one by one with error handling
     messages = await Promise.all(messages.map(async (message) => {
@@ -102,7 +102,7 @@ exports.sendAllMessage = CatchAsyncErrors(async (req, res, next) => {
           });
         return populatedMessage;
       } catch (err) {
-        console.error('Error populating message:', err);
+        // console.error('Error populating message:', err);
         return message; // Return unpopulated message if population fails
       }
     }));
@@ -110,14 +110,14 @@ exports.sendAllMessage = CatchAsyncErrors(async (req, res, next) => {
     // Filter out any null or undefined messages
     messages = messages.filter(message => message != null);
     
-    console.log('Populated messages found:', messages.length);
+    // console.log('Populated messages found:', messages.length);
       
     res.status(200).json({
       success: true,
       data: messages,
     });
   } catch (error) {
-    console.error('Error in sendAllMessage:', error);
+    // console.error('Error in sendAllMessage:', error);
     return next(new ErrorHandler(`Error fetching messages: ${error.message}`, 500));
   }
 });
