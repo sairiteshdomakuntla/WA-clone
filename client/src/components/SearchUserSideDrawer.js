@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { AiOutlineSearch } from 'react-icons/ai';
-import { getLocalStorage } from '../utils/helpers';
+// import { getLocalStorage } from '../utils/helpers';
 import { SkeletonLoader, UserListItem } from '.';
 import {
   Drawer,

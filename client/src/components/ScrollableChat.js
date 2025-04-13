@@ -273,9 +273,9 @@
 
 import React from 'react';
 import ScrollableFeed from 'react-scrollable-feed';
-import { isSameSender, isSameUser, isLastMessage } from '../utils/helpers';
+import { isSameSender, isLastMessage } from '../utils/helpers';
 import { useUserContext } from '../context/userContext';
-import { Avatar, Box, Flex, HStack, Text, Tooltip } from '@chakra-ui/react';
+import { Avatar, Box, Flex, Text, Tooltip } from '@chakra-ui/react';
 
 function ScrollableChat({ messages }) {
   const { currentUser } = useUserContext();

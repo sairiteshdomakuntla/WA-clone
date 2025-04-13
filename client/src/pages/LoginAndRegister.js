@@ -18,7 +18,7 @@ function Homepage() {
   const { authLoading } = useUserContext();
 
   useEffect(() => {
-    document.title = 'TomperChat | Login/Register';
+    document.title = 'WhatsApp | Login/Register';
   }, []);
 
   if (authLoading) {

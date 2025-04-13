@@ -7,13 +7,13 @@ function ChatsPage() {
   const { selectedChat } = useChatContext();
 
   useEffect(() => {
-    document.title = 'TomperChat | Chats';
+    document.title = 'WhatsApp | Chats';
   }, []);
 
   return (
     <Flex w='100%' flexDirection='column' h='100vh'>
       <Text px='4' py='1' fontSize='0.75rem' color='white' bg='whatsapp.400'>
-        TomperChat
+        WhatsApp
       </Text>
       <Stack
         spacing='0'

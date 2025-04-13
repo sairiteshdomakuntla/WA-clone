@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { useToast } from '@chakra-ui/react';
-import { getLocalStorage, setLocalStorage } from '../utils/helpers';
+// import { getLocalStorage, setLocalStorage } from '../utils/helpers';
 import axios from '../utils/axiosConfig';
 
 const UserContext = React.createContext();

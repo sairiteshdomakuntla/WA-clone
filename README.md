@@ -13,7 +13,7 @@
 ---
 
 <p align='center'>
-This is the frontend + backend of TomperChat build with MERN stack and hosted with <a href='https://www.render.com/' target='_blank'>Render</a>
+This is the frontend + backend of WhatsApp build with MERN stack and hosted with <a href='https://www.render.com/' target='_blank'>Render</a>
 </p>
 <p align='center'>
 <img src='./assets/dp1.PNG' >
@@ -24,7 +24,7 @@ This is the frontend + backend of TomperChat build with MERN stack and hosted wi
 
 #### 🧾 Description
 
-TomperChat is a clone of WhatsApp. Its build using MERN stack and uses <a href='https://socket.io/'>socket.io</a> for realtime messaging, online statuses, typing indicators, notifications etc.
+WhatsApp is a clone of WhatsApp. Its build using MERN stack and uses <a href='https://socket.io/'>socket.io</a> for realtime messaging, online statuses, typing indicators, notifications etc.
 
 #### ✨ Features
 
